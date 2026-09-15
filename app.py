@@ -14,11 +14,9 @@ st.set_page_config(
 # --- CUSTOM CSS FOR ATTRACTIVE STYLING ---
 st.markdown("""
     <style>
-    /* Main Background Accent */
     .main {
         background-color: #f8f9fa;
     }
-    /* Title Card Styling */
     .title-card {
         background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
         padding: 2.5rem;
@@ -37,7 +35,6 @@ st.markdown("""
         font-size: 1.1rem;
         opacity: 0.9;
     }
-    /* Prediction Box Styling */
     .stButton>button {
         width: 100%;
         background: linear-gradient(90deg, #4F46E5 0%, #7C3AED 100%);
@@ -69,6 +66,21 @@ except Exception as e:
     st.error(f"Error loading model 'random.pkl': {e}")
     st.stop()
 
+# --- CATEGORICAL MAPPINGS ---
+# Adjust integer keys if your dataset training used a different encoding order
+gender_map = {"Male": 0, "Female": 1, "Other": 2}
+marital_map = {"Single": 0, "Married": 1, "Divorced": 2, "Widowed": 3}
+occupation_map = {"Student": 0, "Employed": 1, "Self-Employed": 2, "Unemployed": 3}
+income_map = {
+    "No Income": 0, 
+    "Below 10,000": 1, 
+    "10,001 - 25,000": 2, 
+    "25,001 - 50,000": 3, 
+    "More than 50,000": 4
+}
+education_map = {"School": 0, "Under Graduate": 1, "Post Graduate": 2, "Uneducated": 3}
+customer_type_map = {"New": 0, "Existing": 1, "Frequent": 2, "Occasional": 3}
+
 # --- HEADER SECTION ---
 st.markdown("""
     <div class="title-card">
@@ -84,43 +96,59 @@ col1, col2 = st.columns(2)
 
 with col1:
     age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1)
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    marital_status = st.selectbox("Marital Status", ["Single", "Married", "Divorced", "Widowed"])
-    occupation = st.selectbox("Occupation", ["Student", "Employed", "Self-Employed", "Unemployed"])
+    gender = st.selectbox("Gender", list(gender_map.keys()))
+    marital_status = st.selectbox("Marital Status", list(marital_map.keys()))
+    occupation = st.selectbox("Occupation", list(occupation_map.keys()))
 
 with col2:
-    monthly_income = st.selectbox("Monthly Income", ["No Income", "Below 10,000", "10,001 - 25,000", "25,001 - 50,000", "More than 50,000"])
-    education = st.selectbox("Educational Qualifications", ["Under Graduate", "Post Graduate", "School", "Uneducated"])
+    monthly_income = st.selectbox("Monthly Income", list(income_map.keys()))
+    education = st.selectbox("Educational Qualifications", list(education_map.keys()))
     family_size = st.number_input("Family Size", min_value=1, max_value=20, value=3, step=1)
-    customer_type = st.selectbox("Customer Type", ["New", "Existing", "Frequent", "Occasional"])
+    customer_type = st.selectbox("Customer Type", list(customer_type_map.keys()))
 
 st.markdown("---")
 
 # --- PREDICTION TRIGGER ---
 if st.button("🔮 Predict Response"):
     
-    # 1. Map Categorical inputs to numerical features if required by your pipeline,
-    # or build the dataframe matching feature order: 
-    # ['Age', 'Gender', 'Marital Status', 'Occupation', 'Monthly Income', 'Educational Qualifications', 'Family size', 'Customer Type']
+    # Map raw string selections to numerical representations
+    numeric_gender = gender_map[gender]
+    numeric_marital = marital_map[marital_status]
+    numeric_occupation = occupation_map[occupation]
+    numeric_income = income_map[monthly_income]
+    numeric_education = education_map[education]
+    numeric_customer_type = customer_type_map[customer_type]
     
+    # Construct DataFrame with numeric values
     input_data = pd.DataFrame([[
-        age, gender, marital_status, occupation, 
-        monthly_income, education, family_size, customer_type
+        age, 
+        numeric_gender, 
+        numeric_marital, 
+        numeric_occupation, 
+        numeric_income, 
+        numeric_education, 
+        family_size, 
+        numeric_customer_type
     ]], columns=[
-        'Age', 'Gender', 'Marital Status', 'Occupation', 
-        'Monthly Income', 'Educational Qualifications', 'Family size', 'Customer Type'
+        'Age', 
+        'Gender', 
+        'Marital Status', 
+        'Occupation', 
+        'Monthly Income', 
+        'Educational Qualifications', 
+        'Family size', 
+        'Customer Type'
     ])
 
-    # Show a spinner effect during processing
+    # Show dynamic spinner effect during inference
     with st.spinner("Analyzing input parameters..."):
-        time.sleep(0.8)  # Subtle pause for dynamic effect
+        time.sleep(0.5)
         
         try:
             prediction = model.predict(input_data)[0]
             probability = model.predict_proba(input_data).max() * 100 if hasattr(model, "predict_proba") else None
         except Exception as err:
-            # Fallback if preprocessing is required prior to prediction
-            st.error("Prediction failed. Make sure categorical inputs match the model's target encoder or preprocessor format.")
+            st.error("Prediction failed. Ensure the features and numeric encodings match your trained model.")
             st.exception(err)
             st.stop()
 
@@ -135,10 +163,10 @@ if st.button("🔮 Predict Response"):
     
     with res_col1:
         if str(prediction).lower() in ["yes", "1", "true"]:
-            st.success(f"### 🎉 Prediction: {prediction}")
+            st.success(f"### 🎉 Prediction: Positive Response ({prediction})")
             st.write("The customer is **highly likely** to convert or accept the offer.")
         else:
-            st.warning(f"### ⚠️ Prediction: {prediction}")
+            st.warning(f"### ⚠️ Prediction: Negative Response ({prediction})")
             st.write("The customer is **unlikely** to convert or accept the offer.")
 
     with res_col2:
